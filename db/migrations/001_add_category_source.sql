@@ -1,0 +1,1 @@
+ALTER TABLE Receipts ADD COLUMN category_source VARCHAR(20) DEFAULT NULL;

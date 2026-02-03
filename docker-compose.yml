@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  frontend:
+    build: react-app/
+    container_name: frontend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    depends_on:
+      - web
+
+  web:
+    build: flask-app/
+    container_name: web
+    volumes:
+      - ./flask-app:/code
+      - ./secrets:/secrets
+    restart: unless-stopped
+    ports:
+      - "8001:4000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-dev-key-change-in-production}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: FinanceAppDatabase
+      FLASK_DEBUG: ${FLASK_DEBUG:-true}
+    links:
+      - db
+
+  db:
+    image: mysql:8
+    container_name: db
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d/:ro
+    ports:
+      - "3200:3306"
+    restart: unless-stopped
+    environment:
+      MYSQL_USER: webapp
+      MYSQL_PASSWORD_FILE: /run/secrets/secret_db_pw
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/secret_db_root_pw
+    secrets:
+      - secret_db_pw
+      - secret_db_root_pw
+
+secrets:
+  secret_db_pw:
+    file: ./secrets/db_password.txt
+  secret_db_root_pw:
+    file: ./secrets/db_root_password.txt

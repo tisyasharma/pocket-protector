@@ -1,0 +1,17 @@
+.DS_Store
+secrets/db_password.txt
+secrets/db_root_password.txt
+__pycache__/
+*.pyc
+*.pyo
+stacks/
+thunder-tests/
+node_modules/
+.env
+.env.local
+dist/
+build/
+flask-app/src/ml/model/*.joblib
+
+db/mywind/
+.vscode/
