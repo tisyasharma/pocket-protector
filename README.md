@@ -41,8 +41,8 @@ Receipts are automatically categorized through a tiered system. Known merchants 
 Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ```bash
-git clone <your-repo-url>
-cd 24s-project-boilerplate
+git clone https://github.com/tisyasharma/pocket-protector.git
+cd pocket-protector
 
 echo "somerootpassword" > secrets/db_root_password.txt
 echo "somewebapppassword" > secrets/db_password.txt
@@ -56,26 +56,38 @@ App runs at http://localhost:3000, API at http://localhost:8001.
 
 ```
 flask-app/
-  app.py                      # entry point
+  app.py                          # entry point
   src/
-    __init__.py               # app factory, DB config
-    helpers.py                # shared response/validation utilities
-    users/users.py            # user + group routes, login
-    purchases/receipts.py     # receipts, transactions, stores
-    management/management.py  # budgets, spending goals, notifications
-    descriptors/categories.py # categories, tags
-    ml/categorizer.py         # ML category prediction
-  tests/                      # pytest suite with mocked DB
+    __init__.py                   # app factory, DB config
+    helpers.py                    # shared response/validation utilities
+    users/
+      accounts.py                 # account CRUD, login
+      auth.py                     # auth middleware
+      groups.py                   # group management
+    purchases/
+      receipts.py                 # receipt CRUD, summaries, ML retrain
+      transactions.py             # transaction queries
+      stores.py                   # store CRUD, subscription tracking
+    management/
+      budgets.py                  # per-category budget limits
+      spending_goals.py           # monthly spending goals
+      notifications.py            # alert preferences
+    descriptors/
+      categories.py               # categories and tags
+    ml/
+      categorizer.py              # TF-IDF + Logistic Regression categorizer
+  tests/                          # pytest suite with mocked DB
 
 react-app/
   src/
-    pages/                    # Login, Dashboard, Receipts, Budgets
-    components/               # Navbar, forms, cards, charts
-    context/AuthContext.jsx   # auth state, login/logout
-    api/client.js             # axios HTTP client
+    pages/                        # Login, Dashboard, Receipts, Budgets
+    components/                   # cards, forms, charts, alerts
+    context/AuthContext.jsx       # auth state, login/logout
+    api/client.js                 # axios HTTP client
+    utils/constants.js            # shared category list, date helpers
 
 db/
-  main_database.sql           # schema + seed data
+  main_database.sql               # schema + seed data
 ```
 
 ## Team
