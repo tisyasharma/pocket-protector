@@ -2,6 +2,7 @@ import json
 
 
 class TestReceipts:
+    """CRUD tests for the /purchases/receipts endpoints."""
     def test_get_user_receipts(self, client, mock_cursor):
         mock_cursor.description = [('receipt_id',), ('date',), ('total_amount',)]
         mock_cursor.fetchall.return_value = [(1, '2024-01-01', 50.00)]
@@ -52,6 +53,7 @@ class TestReceipts:
 
 
 class TestTransactions:
+    """CRUD tests for the /purchases/transactions endpoints."""
     def test_get_transactions(self, client, mock_cursor):
         mock_cursor.description = [('transaction_id',), ('item_name',), ('unit_cost',)]
         mock_cursor.fetchall.return_value = [(1, 'Milk', 3.50)]
@@ -90,6 +92,7 @@ class TestTransactions:
 
 
 class TestStores:
+    """CRUD tests for the /purchases/stores endpoints."""
     def test_get_all_stores(self, client, mock_cursor):
         mock_cursor.description = [('store_id',), ('store_name',)]
         mock_cursor.fetchall.return_value = [(1, 'Whole Foods')]
@@ -134,48 +137,4 @@ class TestStores:
 
     def test_delete_store(self, client, mock_cursor):
         response = client.delete('/purchases/stores/1')
-        assert response.status_code == 200
-
-
-class TestInvestments:
-    def test_get_user_investments(self, client, mock_cursor):
-        mock_cursor.description = [('investment_id',), ('stock_name',)]
-        mock_cursor.fetchall.return_value = [(1, 'AAPL')]
-
-        response = client.get('/purchases/investments/1')
-        assert response.status_code == 200
-
-    def test_create_investment(self, client, mock_cursor):
-        payload = {
-            'stock_name': 'GOOG',
-            'purchase_date': '2024-01-01',
-            'investment_type': 'Stock'
-        }
-        response = client.post('/purchases/investments/1', json=payload)
-        assert response.status_code == 201
-
-    def test_get_single_investment(self, client, mock_cursor):
-        mock_cursor.description = [('investment_id',), ('stock_name',)]
-        mock_cursor.fetchone.return_value = (1, 'AAPL')
-
-        response = client.get('/purchases/investments/detail/1')
-        assert response.status_code == 200
-
-    def test_investment_not_found(self, client, mock_cursor):
-        mock_cursor.fetchone.return_value = None
-
-        response = client.get('/purchases/investments/detail/999')
-        assert response.status_code == 404
-
-    def test_update_investment(self, client, mock_cursor):
-        payload = {
-            'stock_name': 'MSFT',
-            'purchase_date': '2024-02-01',
-            'investment_type': 'Stock'
-        }
-        response = client.put('/purchases/investments/1', json=payload)
-        assert response.status_code == 200
-
-    def test_delete_investment(self, client, mock_cursor):
-        response = client.delete('/purchases/investments/1')
         assert response.status_code == 200

@@ -1,12 +1,17 @@
 from flask import request
 
 from src import db
-from src.helpers import build_json_response, success_response, error_response, validate_fields
-from src.ml.categorizer import predict_category, CONFIDENCE_THRESHOLD, train_model, reset_model
+from src.helpers import (
+    build_json_response, success_response,
+    error_response, validate_fields
+)
+from src.ml.categorizer import (
+    predict_category, CONFIDENCE_THRESHOLD,
+    train_model, reset_model
+)
 
 from . import purchases
 
-# quick rules for auto-categorizing stores
 KNOWN_MERCHANTS = {
     'trader joe': 'Food & Drink',
     'whole foods': 'Food & Drink',
@@ -50,6 +55,20 @@ KNOWN_MERCHANTS = {
     'national grid': 'Services',
 }
 
+SUBSCRIPTION_MERCHANTS = {
+    'netflix', 'spotify', 'hulu', 'disney+',
+    'planet fitness', 'equinox', 'boston sports club', 'cambridge athletic',
+    'comcast', 'xfinity', 'verizon', 'national grid',
+    'blue cross', 'bright horizons',
+}
+
+
+def is_subscription_merchant(store_name):
+    """Check if a store name matches a known subscription or recurring service."""
+    name_lower = store_name.lower().strip()
+    return any(keyword in name_lower for keyword in SUBSCRIPTION_MERCHANTS)
+
+
 CATEGORY_SIGNALS = {
     'Food & Drink': {
         'strong': ['restaurant', 'cafe', 'coffee', 'bakery', 'pizzeria', 'grocer', 'market'],
@@ -84,12 +103,9 @@ CATEGORY_SIGNALS = {
 
 def categorize_store(store_name):
     """
-    Categorize a store using a few simple steps:
-    1) known merchant match
-    2) keyword scoring
-    3) ML prediction if it's confident enough
-    4) fallback
-    Returns (category, source).
+    Categorize a store by checking known merchants first, then scoring
+    against keyword signals, falling back to ML prediction when confident,
+    and defaulting to Shopping otherwise. Returns (category, source).
     """
     name_lower = store_name.lower().strip()
 
@@ -134,7 +150,7 @@ def resolve_category_id(cursor, category_name):
 
 @purchases.route('/receipts/<user_id>', methods=['GET'])
 def get_user_receipts(user_id):
-    """Supports search/date/category filters + pagination."""
+    """Supports search/date/category filters, sorting, and pagination."""
     try:
         search = request.args.get('search', '').strip()
         start_date = request.args.get('start_date')
@@ -142,6 +158,20 @@ def get_user_receipts(user_id):
         category = request.args.get('category')
         page = request.args.get('page')
         per_page = int(request.args.get('per_page', 20))
+
+        allowed_sort_columns = {
+            'date': 'r.date',
+            'total_amount': 'r.total_amount',
+            'category_name': 'c.category_name',
+            'store_name': 's.store_name',
+        }
+        sort_by = request.args.get('sort_by', 'date')
+        sort_order = request.args.get('sort_order', 'desc').lower()
+
+        sort_col = allowed_sort_columns.get(sort_by, 'r.date')
+        if sort_order not in ('asc', 'desc'):
+            sort_order = 'desc'
+        order_clause = f'ORDER BY {sort_col} {sort_order.upper()}'
 
         conditions = ['r.user_id = %s']
         params = [user_id]
@@ -181,7 +211,7 @@ def get_user_receipts(user_id):
                        s.store_name, c.category_name
                 {base_from}
                 WHERE {where}
-                ORDER BY r.date DESC
+                {order_clause}
                 LIMIT %s OFFSET %s
             ''', params + [per_page, offset])
             data = build_json_response(cursor, cursor.fetchall())
@@ -200,7 +230,7 @@ def get_user_receipts(user_id):
                        s.store_name, c.category_name
                 {base_from}
                 WHERE {where}
-                ORDER BY r.date DESC
+                {order_clause}
             ''', params)
             data = build_json_response(cursor, cursor.fetchall())
             return success_response(data)
@@ -299,16 +329,16 @@ def get_user_receipt_summary(user_id):
             'by_week_category': by_week_category
         }
 
-        if period == 'week':
-            cursor.execute('''
-                SELECT r.date as day_date, SUM(r.total_amount) as total
-                FROM Receipts r
-                WHERE r.user_id = %s AND r.date BETWEEN %s AND %s
-                GROUP BY r.date
-                ORDER BY r.date ASC
-            ''', (user_id, start, end))
-            result['by_day'] = build_json_response(cursor, cursor.fetchall())
+        cursor.execute('''
+            SELECT r.date as day_date, SUM(r.total_amount) as total
+            FROM Receipts r
+            WHERE r.user_id = %s AND r.date BETWEEN %s AND %s
+            GROUP BY r.date
+            ORDER BY r.date ASC
+        ''', (user_id, start, end))
+        result['by_day'] = build_json_response(cursor, cursor.fetchall())
 
+        if period == 'week':
             cursor.execute('''
                 SELECT r.date as day_date, c.category_name, SUM(r.total_amount) as total
                 FROM Receipts r
@@ -347,6 +377,57 @@ def get_user_receipt_summary(user_id):
         return error_response(str(e), 500)
 
 
+@purchases.route('/receipts/<user_id>/top-merchants', methods=['GET'])
+def get_top_merchants(user_id):
+    """Returns the top merchants by total spend for the given period and offset."""
+    try:
+        period = request.args.get('period', 'month')
+        offset = int(request.args.get('offset', 0))
+        limit = int(request.args.get('limit', 5))
+
+        start, end = compute_date_range(period, offset)
+        cursor = db.get_db().cursor()
+
+        cursor.execute('''
+            SELECT s.store_name,
+                   SUM(r.total_amount) as total_spent,
+                   COUNT(*) as visit_count,
+                   MAX(s.is_subscription) as is_subscription
+            FROM Receipts r
+            LEFT JOIN Stores s ON r.store_id = s.store_id
+            WHERE r.user_id = %s AND r.date BETWEEN %s AND %s
+                  AND s.store_name IS NOT NULL
+            GROUP BY s.store_name
+            ORDER BY total_spent DESC
+            LIMIT %s
+        ''', (user_id, start, end, limit))
+        data = build_json_response(cursor, cursor.fetchall())
+        return success_response(data)
+    except Exception as e:
+        return error_response(str(e), 500)
+
+
+@purchases.route('/receipts/<user_id>/store/<store_id>', methods=['GET'])
+def get_receipts_by_store(user_id, store_id):
+    """Returns all receipts for a user at a specific store, newest first."""
+    try:
+        cursor = db.get_db().cursor()
+        cursor.execute('''
+            SELECT r.receipt_id, r.date, r.total_amount,
+                   s.store_name, c.category_name
+            FROM Receipts r
+            LEFT JOIN Stores s ON r.store_id = s.store_id
+            LEFT JOIN Categories c ON r.category_id = c.category_id
+            WHERE r.user_id = %s AND r.store_id = %s
+            ORDER BY r.date DESC
+            LIMIT 20
+        ''', (user_id, store_id))
+        data = build_json_response(cursor, cursor.fetchall())
+        return success_response(data)
+    except Exception as e:
+        return error_response(str(e), 500)
+
+
 @purchases.route('/receipts/<user_id>', methods=['POST'])
 def create_receipt(user_id):
     """
@@ -376,9 +457,12 @@ def create_receipt(user_id):
             if row:
                 store_id = row[0]
             else:
+                subscription = is_subscription_merchant(store_name)
                 cursor.execute(
-                    'INSERT INTO Stores (store_name, zip_code, street_address, city, state) VALUES (%s, %s, %s, %s, %s)',
-                    (store_name, '', '', '', '')
+                    'INSERT INTO Stores '
+                    '(store_name, zip_code, street_address, city, state, is_subscription) '
+                    'VALUES (%s, %s, %s, %s, %s, %s)',
+                    (store_name, '', '', '', '', subscription)
                 )
                 conn.commit()
                 store_id = cursor.lastrowid
@@ -427,6 +511,7 @@ def retrain_categorizer():
 
 @purchases.route('/receipts/detail/<receipt_id>', methods=['GET'])
 def get_receipt(receipt_id):
+    """Fetch a single receipt by its primary key."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Receipts WHERE receipt_id = %s', (receipt_id,))
@@ -442,13 +527,27 @@ def get_receipt(receipt_id):
 
 @purchases.route('/receipts/<receipt_id>', methods=['PUT'])
 def update_receipt(receipt_id):
+    """Updates receipt fields. Only total_amount is required, date and category_id are optional."""
     try:
         the_data, err = validate_fields(['total_amount'])
         if err:
             return err
 
-        query = 'UPDATE Receipts SET total_amount = %s WHERE receipt_id = %s'
-        values = (the_data['total_amount'], receipt_id)
+        set_clauses = ['total_amount = %s']
+        values = [the_data['total_amount']]
+
+        if 'date' in the_data:
+            set_clauses.append('date = %s')
+            values.append(the_data['date'])
+
+        if 'category_id' in the_data:
+            set_clauses.append('category_id = %s')
+            set_clauses.append("category_source = 'user_override'")
+            values.append(the_data['category_id'])
+
+        values.append(receipt_id)
+        query = f"UPDATE Receipts SET {', '.join(set_clauses)} WHERE receipt_id = %s"
+
         cursor = db.get_db().cursor()
         cursor.execute(query, values)
         db.get_db().commit()
@@ -459,6 +558,7 @@ def update_receipt(receipt_id):
 
 @purchases.route('/receipts/<receipt_id>', methods=['DELETE'])
 def delete_receipt(receipt_id):
+    """Remove a receipt and let the DB cascade to its transactions."""
     try:
         query = 'DELETE FROM Receipts WHERE receipt_id = %s'
         cursor = db.get_db().cursor()

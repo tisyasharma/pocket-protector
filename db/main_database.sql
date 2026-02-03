@@ -39,16 +39,6 @@ CREATE TABLE IF NOT EXISTS Users (
     FOREIGN KEY (group_id) REFERENCES `Groups`(group_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
--- Investments table
-CREATE TABLE IF NOT EXISTS Investments (
-    investment_id INT PRIMARY KEY AUTO_INCREMENT,
-    stock_name VARCHAR(100) NOT NULL,
-    purchase_date DATE NOT NULL,
-    investment_type VARCHAR(50) NOT NULL,
-    user_id INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON UPDATE CASCADE ON DELETE CASCADE
-);
-
 -- Store table
 CREATE TABLE IF NOT EXISTS Stores (
     store_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -56,7 +46,8 @@ CREATE TABLE IF NOT EXISTS Stores (
     zip_code VARCHAR(10) NOT NULL,
     street_address VARCHAR(255) NOT NULL,
     city VARCHAR(100) NOT NULL,
-    state VARCHAR(100) NOT NULL
+    state VARCHAR(100) NOT NULL,
+    is_subscription BOOLEAN DEFAULT FALSE
 );
 
 -- Tag table
@@ -159,17 +150,8 @@ VALUES
 (2, 'david@example.edu', 'David', NULL, 'Kim', 'scrypt:32768:8:1$bD7POKqpqI407GjV$89b23c4254e765602a75ab4edd0b513e70e954fada527aa40121c40ab66a1b39b955bc0b972c25a30b923cf0c942edc992534798419a1793f9124386f2bfa9ac'),
 (3, 'maria@example.com', 'Maria', NULL, 'Santos', 'scrypt:32768:8:1$ZCOsFwJ3g5wN01HF$86c8487b073769db10d741c4ded857f86f4d12fa448c2f2901409fe4b87bfd422c199b232107371da1126032b2ed22a155d2d634cdbce2199a2cd761c1d6c3d6'),
 (4, 'john@example.com', 'John', NULL, 'Chen', 'scrypt:32768:8:1$d99gQUiQ81DfgFsD$2e7c6e86a8e60c1e822e1f3459214ed53d92dcb70c16963fffa26008bbeb6437e992d68bae6f7bae56c9799021b8453553111d001399dff92e1ab0a3bd71abdd'),
-(5, 'user1@example.com', 'Alex', NULL, 'Thompson', 'scrypt:32768:8:1$giONNoom7W3KlFKd$13aa4c34a5d82c08fd363dda9003b978c609f9aaa22f54f10431d5f74531f2499cb83c88b3cf21047f8b48f493b05166fcbd3dbef0a1b524c7d6575b8c447b89');
+(5, 'alex@example.com', 'Alex', NULL, 'Thompson', 'scrypt:32768:8:1$QjtLRiaF3uuTpGhg$78c581fa51e85607c947875361e2b4f463983cdbd75306be6ccb279952d3087ba415c6bfaf9383902e891bfafd1137b52a3fbe1591b089c537f7eb13a71cfee6');
 
--- Investments for demo users
-INSERT INTO Investments (stock_name, purchase_date, investment_type, user_id)
-VALUES
-('AAPL', '2023-01-15', 'Stock', 1),
-('MSFT', '2023-06-10', 'Stock', 1),
-('VOO', '2023-03-01', 'ETF', 2),
-('VTI', '2023-09-15', 'ETF', 4),
-('AMZN', '2024-02-20', 'Stock', 4),
-('GOOG', '2024-01-10', 'Stock', 5);
 
 -- Boston-area stores (groceries, restaurants, cafes, shops, gyms, pharmacies)
 INSERT INTO Stores (store_name, zip_code, street_address, city, state)
@@ -249,6 +231,12 @@ VALUES
 ('Prudential Center', '02199', '800 Boylston St', 'Boston', 'MA'),
 ('Assembly Row', '02145', '355 Artisan Way', 'Somerville', 'MA'),
 ('The Shops at Chestnut Hill', '02467', '199 Boylston St', 'Chestnut Hill', 'MA');
+
+UPDATE Stores SET is_subscription = TRUE WHERE store_name IN (
+    'Equinox', 'Planet Fitness', 'Boston Sports Club', 'Cambridge Athletic Club',
+    'Comcast Xfinity', 'Verizon', 'National Grid', 'Blue Cross Blue Shield',
+    'Bright Horizons Daycare'
+);
 
 -- Tags for demo users
 INSERT INTO Tags (tag_name, user_id)
@@ -2379,5 +2367,38 @@ VALUES
 (0, 350.00, 'April', 5),
 (0, 400.00, 'July', 5),
 (0, 380.00, 'November', 5);
+
+-- Normalize subscription receipts to fixed monthly amounts and consistent billing dates
+UPDATE Receipts SET total_amount = 185.00,
+    date = STR_TO_DATE(CONCAT(YEAR(date), '-', MONTH(date), '-01'), '%Y-%m-%d')
+WHERE store_id = 51;
+
+UPDATE Receipts SET total_amount = 15.99,
+    date = STR_TO_DATE(CONCAT(YEAR(date), '-', MONTH(date), '-05'), '%Y-%m-%d')
+WHERE store_id = 53;
+
+UPDATE Receipts SET total_amount = 70.00,
+    date = STR_TO_DATE(CONCAT(YEAR(date), '-', MONTH(date), '-01'), '%Y-%m-%d')
+WHERE store_id = 54;
+
+UPDATE Receipts SET total_amount = 1050.00,
+    date = STR_TO_DATE(CONCAT(YEAR(date), '-', MONTH(date), '-15'), '%Y-%m-%d')
+WHERE store_id = 67;
+
+UPDATE Receipts SET total_amount = 89.99,
+    date = STR_TO_DATE(CONCAT(YEAR(date), '-', MONTH(date), '-03'), '%Y-%m-%d')
+WHERE store_id = 68;
+
+UPDATE Receipts SET total_amount = 95.00,
+    date = STR_TO_DATE(CONCAT(YEAR(date), '-', MONTH(date), '-12'), '%Y-%m-%d')
+WHERE store_id = 69;
+
+UPDATE Receipts SET total_amount = 120.00,
+    date = STR_TO_DATE(CONCAT(YEAR(date), '-', MONTH(date), '-20'), '%Y-%m-%d')
+WHERE store_id = 70;
+
+UPDATE Receipts SET total_amount = 215.00,
+    date = STR_TO_DATE(CONCAT(YEAR(date), '-', MONTH(date), '-01'), '%Y-%m-%d')
+WHERE store_id = 71;
 
 SET FOREIGN_KEY_CHECKS = 1;

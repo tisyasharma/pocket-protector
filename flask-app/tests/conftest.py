@@ -17,7 +17,6 @@ def app():
          patch('src.purchases.receipts.db', mock_db), \
          patch('src.purchases.transactions.db', mock_db), \
          patch('src.purchases.stores.db', mock_db), \
-         patch('src.purchases.investments.db', mock_db), \
          patch('src.descriptors.categories.db', mock_db), \
          patch('src.management.spending_goals.db', mock_db), \
          patch('src.management.budgets.db', mock_db), \
