@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { getCategoryColor } from '../utils/categoryColors'
+import { toISO } from '../utils/constants'
 
-// build a vertical gradient for the stacked bar
+// creates a vertical CSS gradient so each bar can show its category breakdown
 function buildBarGradient(segments, total) {
   if (!segments || segments.length === 0) return '#3d5a80'
   if (segments.length === 1) return getCategoryColor(segments[0].category_name).hex
@@ -34,15 +35,7 @@ function buildBarGradient(segments, total) {
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function toISO(dateStr) {
-  if (!dateStr) return ''
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return dateStr
-  return d.toISOString().split('T')[0]
-}
-
-// fill in all 7 days even if some have no data
+// pad daily data to a full Mon-Sun week so the chart always has 7 bars
 function buildFullWeek(dailyData, periodStart) {
   const monday = new Date(periodStart + 'T00:00:00')
   const days = []
@@ -59,7 +52,7 @@ function buildFullWeek(dailyData, periodStart) {
   return days
 }
 
-// compute nice round Y-axis tick values
+// pick "nice" round numbers for the y-axis gridlines (e.g. $0, $50, $100)
 function computeGridTicks(maxVal, targetCount = 4) {
   if (maxVal <= 0) return [0]
   const rawStep = maxVal / targetCount
@@ -95,11 +88,14 @@ function SpendingChart({
 }) {
   const [mounted, setMounted] = useState(false)
   const [hoveredIndex, setHoveredIndex] = useState(null)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const tooltipRef = useRef(null)
 
   const isDaily = period === 'week'
   const isMonthly = period === 'year'
 
+  // pick the right data source depending on period: daily for week view,
+  // monthly buckets for year view, weekly buckets for month view
   let chartData, dateKey, categorySource
 
   if (isDaily) {
@@ -224,6 +220,7 @@ function SpendingChart({
                   key={itemKey || index}
                   className="flex-1 min-w-0 h-full flex flex-col justify-end items-center relative"
                   onMouseEnter={() => setHoveredIndex(index)}
+                  onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >
                   {itemTotal > 0 && useStacked ? (
@@ -248,17 +245,18 @@ function SpendingChart({
                   {hoveredIndex === index && itemTotal > 0 && (
                     <div
                       ref={tooltipRef}
-                      className="absolute bottom-full mb-2 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 pointer-events-none whitespace-nowrap shadow-lg z-20 left-1/2 -translate-x-1/2"
+                      className="fixed bg-brand-50 border border-brand-100 text-gray-700 text-xs rounded-xl px-3 py-2 pointer-events-none whitespace-nowrap shadow-md z-20"
+                      style={{ left: mousePos.x + 12, top: mousePos.y - 12 }}
                     >
-                      <p className="font-medium mb-1">${itemTotal.toFixed(2)}</p>
+                      <p className="font-semibold text-gray-900 mb-1">${itemTotal.toFixed(2)}</p>
                       {segments.map(seg => {
                         const color = getCategoryColor(seg.category_name)
                         return (
                           <div key={seg.category_name} className="flex items-center gap-1.5">
-                            <span style={{ color: color.icon || color.dark || color.hex }}>
+                            <span className="font-medium" style={{ color: color.icon || color.dark || color.hex }}>
                               {seg.category_name}
                             </span>
-                            <span>: ${seg.total.toFixed(2)}</span>
+                            <span className="text-gray-500">: ${seg.total.toFixed(2)}</span>
                           </div>
                         )
                       })}

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { getCategoryColor } from '../utils/categoryColors'
 import { getCategoryIcon } from '../utils/categoryIcons'
 
-// build a simple gradient for the category bar
+// builds a horizontal CSS gradient for the category bar,
+// each segment sized proportionally to its share of total spending
 function buildGradient(data, totalSpent, mounted) {
   if (!data || data.length === 0 || totalSpent <= 0 || !mounted) return null
 
@@ -69,7 +70,8 @@ function CategoryBreakdown({ data, totalSpent, onCategoryClick }) {
           })}
         </div>
 
-        {hovered && (() => {
+        {/* floating tooltip positioned over the hovered segment */}
+      {hovered && (() => {
           const cat = data.find(c => c.category_name === hovered)
           if (!cat) return null
           const amount = Number(cat.total)
@@ -86,13 +88,13 @@ function CategoryBreakdown({ data, totalSpent, onCategoryClick }) {
 
           return (
             <div
-              className="absolute -top-12 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded-md px-3 py-1.5 pointer-events-none whitespace-nowrap shadow-lg z-10"
+              className="absolute -top-12 transform -translate-x-1/2 bg-brand-50 border border-brand-100 text-gray-700 text-xs rounded-xl px-3 py-1.5 pointer-events-none whitespace-nowrap shadow-md z-10"
               style={{ left: `${tooltipLeft}%` }}
             >
-              <span style={{ color: color.icon || color.dark || color.hex }}>
+              <span className="font-medium" style={{ color: color.icon || color.dark || color.hex }}>
                 {cat.category_name}
               </span>
-              : ${amount.toFixed(2)} ({pct}%)
+              <span className="text-gray-500"> : ${amount.toFixed(2)} ({pct}%)</span>
               {cat.count && <span className="text-gray-400 ml-1">{cat.count} txns</span>}
             </div>
           )

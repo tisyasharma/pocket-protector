@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import client from '../api/client'
 import { getCategoryColor } from '../utils/categoryColors'
 import { getCategoryIcon } from '../utils/categoryIcons'
 import formatDate from '../utils/formatDate'
 
-// slide-over panel for a category in the selected time range
 function CategoryDrilldown({ category, periodStart, periodEnd, onClose }) {
   const { user } = useAuth()
   const [receipts, setReceipts] = useState([])
@@ -13,6 +13,12 @@ function CategoryDrilldown({ category, periodStart, periodEnd, onClose }) {
 
   const color = getCategoryColor(category)
   const icon = getCategoryIcon(category)
+
+  // lock body scroll while the slide-over panel is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   useEffect(() => {
     if (!user || !category) return
@@ -31,6 +37,7 @@ function CategoryDrilldown({ category, periodStart, periodEnd, onClose }) {
 
   const totalForCategory = receipts.reduce((sum, r) => sum + Number(r.total_amount), 0)
 
+  // group receipts by store name to show a per-merchant subtotal
   const storeBreakdown = {}
   receipts.forEach(r => {
     const name = r.store_name || 'Unknown'
@@ -45,11 +52,11 @@ function CategoryDrilldown({ category, periodStart, periodEnd, onClose }) {
     .map(([name, data]) => ({ name, ...data }))
     .sort((a, b) => b.total - a.total)
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex justify-end">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-md bg-white shadow-xl overflow-y-auto page-enter">
+      <div className="relative w-full max-w-md bg-white shadow-xl overflow-y-auto page-enter h-full">
         <div className="sticky top-0 bg-white border-b border-gray-100 p-6 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -133,7 +140,8 @@ function CategoryDrilldown({ category, periodStart, periodEnd, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

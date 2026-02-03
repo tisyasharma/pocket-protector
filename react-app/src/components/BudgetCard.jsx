@@ -14,6 +14,7 @@ function BudgetCard({ budget, onDelete, onUpdate }) {
     notification_threshold: budget.notification_threshold || ''
   })
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true))
@@ -25,6 +26,24 @@ function BudgetCard({ budget, onDelete, onUpdate }) {
   const percentage = Math.min(Math.round((spent / limit) * 100), 100)
   const remaining = Math.max(limit - spent, 0)
 
+  // projection math: extrapolate current daily spending rate to the full
+  // budget window so we can warn the user if they're on pace to exceed it
+  const now = new Date()
+  const budgetStart = budget.start_date ? new Date(budget.start_date) : null
+  const budgetEnd = budget.end_date ? new Date(budget.end_date) : null
+  const budgetEnded = budgetEnd && now > budgetEnd
+  const totalDays = budgetStart && budgetEnd
+    ? Math.max(Math.round((budgetEnd - budgetStart) / (1000 * 60 * 60 * 24)) + 1, 1)
+    : 1
+  const refDate = budgetEnded ? budgetEnd : now
+  const daysElapsed = budgetStart
+    ? Math.max(Math.round((refDate - budgetStart) / (1000 * 60 * 60 * 24)), 1)
+    : 1
+  const projectedSpend = spent > 0 ? (spent / daysElapsed) * totalDays : 0
+  const overProjected = projectedSpend > limit
+  const showProjection = spent > 0 && budgetStart && budgetEnd && !budgetEnded
+
+  // color-code the progress bar: green -> amber -> red
   let barColor = 'bg-emerald-500'
   let statusColor = 'text-emerald-600'
   let statusLabel = 'On track'
@@ -42,6 +61,7 @@ function BudgetCard({ budget, onDelete, onUpdate }) {
 
   function handleSave() {
     setSaving(true)
+    setSaveError('')
     client.put(`/management/budgets/${budget.budget_id}`, {
       amount: editForm.amount,
       start_date: editForm.start_date,
@@ -52,7 +72,7 @@ function BudgetCard({ budget, onDelete, onUpdate }) {
         setEditing(false)
         if (onUpdate) onUpdate()
       })
-      .catch(() => {})
+      .catch(() => setSaveError('Failed to save changes'))
       .finally(() => setSaving(false))
   }
 
@@ -99,9 +119,12 @@ function BudgetCard({ budget, onDelete, onUpdate }) {
           </div>
         </div>
 
+        {saveError && (
+          <p className="text-xs text-red-500">{saveError}</p>
+        )}
         <div className="flex justify-end gap-2 pt-1">
           <button
-            onClick={() => setEditing(false)}
+            onClick={() => { setEditing(false); setSaveError('') }}
             className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-900"
           >
             Cancel
@@ -169,6 +192,11 @@ function BudgetCard({ budget, onDelete, onUpdate }) {
       <p className="text-xs text-gray-400">
         ${remaining.toFixed(2)} remaining
       </p>
+      {showProjection && (
+        <p className={`text-xs mt-1 ${overProjected ? 'text-[#ee6c4d]' : 'text-emerald-600'}`}>
+          Projected: ${projectedSpend.toFixed(2)} by end of period
+        </p>
+      )}
     </div>
   )
 }

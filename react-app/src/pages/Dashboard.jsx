@@ -1,19 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import client from '../api/client'
 import CategoryBreakdown from '../components/CategoryBreakdown'
 import SpendingChart from '../components/WeeklyChart'
 import TimePeriodSelector from '../components/TimePeriodSelector'
 import SpendingSummaryCard from '../components/SpendingSummaryCard'
+import SpendingInsightsCard from '../components/SpendingInsightsCard'
+import BudgetAlerts from '../components/BudgetAlerts'
+import RecentReceipts from '../components/RecentReceipts'
 import CategoryDrilldown from '../components/CategoryDrilldown'
 import EmptyState from '../components/EmptyState'
-import AnimatedNumber from '../components/AnimatedNumber'
-import { getCategoryColor } from '../utils/categoryColors'
-import formatDate from '../utils/formatDate'
 
+// returns the Monday of whatever week `date` falls in,
+// used to align week-based offset calculations
 function getMonday(date) {
-  // normalize to Monday for week comparisons
   const d = new Date(date)
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
@@ -22,11 +22,20 @@ function getMonday(date) {
   return d
 }
 
+function Spinner() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+    </div>
+  )
+}
+
 function Dashboard() {
   const { user } = useAuth()
   const [summary, setSummary] = useState(null)
   const [receipts, setReceipts] = useState([])
   const [budgets, setBudgets] = useState([])
+  const [topMerchants, setTopMerchants] = useState([])
   const [loading, setLoading] = useState(true)
   const [initialOffset, setInitialOffset] = useState(null)
   const [initialWeekOffset, setInitialWeekOffset] = useState(null)
@@ -35,14 +44,18 @@ function Dashboard() {
   const [minWeekOffset, setMinWeekOffset] = useState(null)
   const [minYearOffset, setMinYearOffset] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [expandedInsight, setExpandedInsight] = useState(null)
+  const [insightReceipts, setInsightReceipts] = useState([])
+  const [insightLoading, setInsightLoading] = useState(false)
 
   const [period, setPeriod] = useState('month')
   const [offset, setOffset] = useState(0)
 
+  // on mount, figure out the most recent and oldest receipt dates so we
+  // can set initial offsets and nav bounds for every period type
   useEffect(() => {
     if (!user) return
 
-    // find newest + oldest receipt to set slider limits
     client.get(`/purchases/receipts/${user.user_id}?per_page=1&page=1`)
       .then(res => {
         const data = res.data
@@ -108,10 +121,11 @@ function Dashboard() {
       })
   }, [user])
 
+  // pulls summary + recent receipts + budgets + top merchants in parallel
+  // once the summary endpoint returns the date range for this period
   const fetchPeriodData = useCallback(() => {
     if (!user || initialOffset === null) return
 
-    // load summary + receipts + budgets for the selected window
     setLoading(true)
 
     client.get(`/purchases/receipts/${user.user_id}/summary?period=${period}&offset=${offset}`)
@@ -121,12 +135,13 @@ function Dashboard() {
 
         return Promise.allSettled([
           client.get(`/purchases/receipts/${user.user_id}?start_date=${period_start}&end_date=${period_end}&per_page=5&page=1`),
-          client.get(`/management/budgets/user/${user.user_id}?start_date=${period_start}&end_date=${period_end}`)
+          client.get(`/management/budgets/user/${user.user_id}?start_date=${period_start}&end_date=${period_end}`),
+          client.get(`/purchases/receipts/${user.user_id}/top-merchants?period=${period}&offset=${offset}&limit=5`)
         ])
       })
       .then(results => {
         if (!results) return
-        const [rReceipts, rBudgets] = results
+        const [rReceipts, rBudgets, rMerchants] = results
 
         if (rReceipts.status === 'fulfilled') {
           const data = rReceipts.value.data
@@ -134,6 +149,9 @@ function Dashboard() {
         }
         if (rBudgets.status === 'fulfilled') {
           setBudgets(rBudgets.value.data || [])
+        }
+        if (rMerchants.status === 'fulfilled') {
+          setTopMerchants(rMerchants.value.data || [])
         }
       })
       .catch(() => setSummary(null))
@@ -156,6 +174,7 @@ function Dashboard() {
     return minMonthOffset
   }
 
+  // when switching between week/month/year, jump to that period's latest data
   function handlePeriodChange(newPeriod) {
     setPeriod(newPeriod)
     if (newPeriod === 'year') {
@@ -172,7 +191,7 @@ function Dashboard() {
   }
 
   if (loading && initialOffset === null) {
-    return <p className="text-gray-400">Loading dashboard...</p>
+    return <Spinner />
   }
 
   const totalSpent = summary?.total_spent || 0
@@ -222,6 +241,22 @@ function Dashboard() {
           />
 
           {summary && (
+            <SpendingInsightsCard
+              summary={summary}
+              period={period}
+              totalSpent={totalSpent}
+              user={user}
+              expandedInsight={expandedInsight}
+              setExpandedInsight={setExpandedInsight}
+              insightReceipts={insightReceipts}
+              setInsightReceipts={setInsightReceipts}
+              insightLoading={insightLoading}
+              setInsightLoading={setInsightLoading}
+              topMerchants={topMerchants}
+            />
+          )}
+
+          {summary && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <CategoryBreakdown
                 data={summary.by_category}
@@ -255,132 +290,6 @@ function Dashboard() {
           periodEnd={summary.period_end}
           onClose={() => setSelectedCategory(null)}
         />
-      )}
-    </div>
-  )
-}
-
-function BudgetAlerts({ budgets }) {
-  if (budgets.length === 0) {
-    return (
-      <div>
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Budget alerts</h2>
-        <p className="text-sm text-gray-400">No budgets for this period.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-gray-900">Budget alerts</h2>
-        <Link to="/budgets" className="text-sm text-brand-500 hover:text-brand-700">
-          View all
-        </Link>
-      </div>
-      <div className="space-y-3">
-        {budgets.map(b => {
-          const spent = Number(b.spent_amount) || 0
-          const limit = Number(b.amount) || 1
-          const pct = Math.round((spent / limit) * 100)
-          const barPct = Math.min(pct, 100)
-          const color = getCategoryColor(b.category_name)
-
-          let barColor = 'bg-emerald-500'
-          let statusLabel = 'On track'
-          let statusStyle = 'text-emerald-600'
-          if (pct >= 100) {
-            barColor = 'bg-[#ee6c4d]'
-            statusLabel = `Over budget`
-            statusStyle = 'text-[#ee6c4d]'
-          } else if (pct > 80) {
-            barColor = 'bg-amber-500'
-            statusLabel = 'Getting close'
-            statusStyle = 'text-amber-600'
-          }
-
-          return (
-            <div
-              key={b.budget_id}
-              className="bg-brand-50 rounded-2xl border border-brand-100 p-4 hover:-translate-y-px transition-all"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-sm font-semibold"
-                    style={{ color: color.icon || color.dark || color.hex }}
-                  >
-                    {b.category_name}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-medium ${statusStyle}`}>{statusLabel}</span>
-                  <span className="text-xs text-gray-400">{pct}%</span>
-                </div>
-              </div>
-              <div className="w-full bg-white/60 rounded-full h-1.5">
-                <div
-                  className={`${barColor} h-1.5 rounded-full transition-all duration-700 ease-out`}
-                  style={{ width: `${barPct}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-1.5">
-                <span className="text-xs text-gray-500">
-                  <AnimatedNumber value={spent} /> spent
-                </span>
-                <span className="text-xs text-gray-400">${limit.toFixed(2)} limit</span>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function RecentReceipts({ receipts }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-gray-900">Recent receipts</h2>
-        <Link to="/receipts" className="text-sm text-brand-500 hover:text-brand-700">
-          View all
-        </Link>
-      </div>
-      {receipts.length === 0 ? (
-        <p className="text-sm text-gray-400">No receipts for this period.</p>
-      ) : (
-        <div className="space-y-2">
-          {receipts.map(r => {
-            const color = getCategoryColor(r.category_name)
-            return (
-              <div
-                key={r.receipt_id}
-                className="bg-brand-50 rounded-2xl border border-brand-100 p-3 flex justify-between items-center hover:-translate-y-px transition-all"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {r.store_name || `Receipt #${r.receipt_id}`}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-xs text-gray-500">{formatDate(r.date)}</p>
-                    {r.category_name && (
-                      <span
-                        className="text-xs font-medium"
-                        style={{ color: color.icon || color.dark || color.hex }}
-                      >
-                        {r.category_name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <span className="font-semibold text-gray-900">
-                  ${Number(r.total_amount).toFixed(2)}
-                </span>
-              </div>
-            )
-          })}
-        </div>
       )}
     </div>
   )

@@ -4,30 +4,29 @@ import client from '../api/client'
 import ReceiptCard from '../components/ReceiptCard'
 import ReceiptForm from '../components/ReceiptForm'
 import EmptyState from '../components/EmptyState'
-
-const CATEGORIES = [
-  'Food & Drink', 'Shopping', 'Entertainment', 'Transportation',
-  'Health', 'Travel', 'Services'
-]
+import { CATEGORIES } from '../utils/constants'
 
 function Receipts() {
   const { user } = useAuth()
   const [receipts, setReceipts] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [error, setError] = useState('')
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [sortBy, setSortBy] = useState('date')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
   const debounceRef = useRef(null)
 
+  // debounce the search input so we don't fire a request on every keystroke
   useEffect(() => {
-    // debounce search input
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       setDebouncedSearch(search)
@@ -36,9 +35,9 @@ function Receipts() {
     return () => clearTimeout(debounceRef.current)
   }, [search])
 
+  // build the query string from all active filters and fetch the page
   const fetchReceipts = useCallback(() => {
     setLoading(true)
-    // build query params from filters
     const params = new URLSearchParams()
     params.set('page', page)
     params.set('per_page', 20)
@@ -46,6 +45,8 @@ function Receipts() {
     if (startDate) params.set('start_date', startDate)
     if (endDate) params.set('end_date', endDate)
     if (categoryFilter) params.set('category', categoryFilter)
+    params.set('sort_by', sortBy)
+    params.set('sort_order', sortOrder)
 
     client.get(`/purchases/receipts/${user.user_id}?${params.toString()}`)
       .then(res => {
@@ -57,16 +58,17 @@ function Receipts() {
         setTotalPages(1)
       })
       .finally(() => setLoading(false))
-  }, [user, debouncedSearch, startDate, endDate, categoryFilter, page])
+  }, [user, debouncedSearch, startDate, endDate, categoryFilter, sortBy, sortOrder, page])
 
   useEffect(() => {
     fetchReceipts()
   }, [fetchReceipts])
 
   function handleDelete(receiptId) {
+    setError('')
     client.delete(`/purchases/receipts/${receiptId}`)
       .then(() => fetchReceipts())
-      .catch(() => {})
+      .catch(() => setError('Failed to delete receipt'))
   }
 
   function handleCreated() {
@@ -86,12 +88,21 @@ function Receipts() {
     setPage(1)
   }
 
+  function handleSortChange(value) {
+    const [col, order] = value.split(':')
+    setSortBy(col)
+    setSortOrder(order)
+    setPage(1)
+  }
+
   function clearFilters() {
     setSearch('')
     setDebouncedSearch('')
     setStartDate('')
     setEndDate('')
     setCategoryFilter('')
+    setSortBy('date')
+    setSortOrder('desc')
     setPage(1)
   }
 
@@ -99,6 +110,12 @@ function Receipts() {
 
   return (
     <div className="space-y-6 page-enter">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 text-xs">Dismiss</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Receipts</h1>
         <button
@@ -126,6 +143,17 @@ function Receipts() {
             placeholder="Search by store name..."
             className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500"
           />
+          <select
+            value={`${sortBy}:${sortOrder}`}
+            onChange={e => handleSortChange(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500"
+          >
+            <option value="date:desc">Newest first</option>
+            <option value="date:asc">Oldest first</option>
+            <option value="total_amount:desc">Highest amount</option>
+            <option value="total_amount:asc">Lowest amount</option>
+            <option value="category_name:asc">Category A-Z</option>
+          </select>
           <input
             type="date"
             value={startDate}
@@ -166,7 +194,9 @@ function Receipts() {
       </div>
 
       {loading ? (
-        <p className="text-gray-400">Loading receipts...</p>
+        <div className="flex items-center justify-center py-12">
+          <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+        </div>
       ) : receipts.length === 0 ? (
         <EmptyState
           title="No Receipts"
@@ -175,9 +205,14 @@ function Receipts() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="hidden md:block space-y-2">
             {receipts.map(r => (
-              <ReceiptCard key={r.receipt_id} receipt={r} onDelete={handleDelete} />
+              <ReceiptCard key={r.receipt_id} receipt={r} onDelete={handleDelete} onUpdate={fetchReceipts} layout="row" />
+            ))}
+          </div>
+          <div className="md:hidden space-y-4">
+            {receipts.map(r => (
+              <ReceiptCard key={r.receipt_id} receipt={r} onDelete={handleDelete} onUpdate={fetchReceipts} layout="card" />
             ))}
           </div>
 

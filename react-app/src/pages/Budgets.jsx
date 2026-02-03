@@ -7,6 +7,7 @@ import SpendingGoalCard from '../components/SpendingGoalCard'
 import SpendingGoalForm from '../components/SpendingGoalForm'
 import AnimatedNumber from '../components/AnimatedNumber'
 import EmptyState from '../components/EmptyState'
+import { CATEGORIES } from '../utils/constants'
 
 function Budgets() {
   const { user } = useAuth()
@@ -17,9 +18,12 @@ function Budgets() {
   const [showHistorical, setShowHistorical] = useState(false)
   const [showGoalForm, setShowGoalForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState(null)
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [error, setError] = useState('')
 
+  // fetch budgets and goals in parallel, using allSettled so one
+  // failure doesn't block the other from rendering
   function fetchData() {
-    // grab budgets + goals for this user
     setLoading(true)
     const activeParam = showHistorical ? '' : '?active=true'
     Promise.allSettled([
@@ -36,15 +40,17 @@ function Budgets() {
   }, [user, showHistorical])
 
   function handleDeleteBudget(budgetId) {
+    setError('')
     client.delete(`/management/budgets/${budgetId}`)
       .then(() => fetchData())
-      .catch(() => {})
+      .catch(() => setError('Failed to delete budget'))
   }
 
   function handleDeleteGoal(goalId) {
+    setError('')
     client.delete(`/management/spending-goals/${goalId}`)
       .then(() => fetchData())
-      .catch(() => {})
+      .catch(() => setError('Failed to delete goal'))
   }
 
   function handleEditGoal(goal) {
@@ -63,27 +69,44 @@ function Budgets() {
     fetchData()
   }
 
-  if (loading) return <p className="text-gray-400">Loading budgets...</p>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
-  const totalBudgeted = budgets.reduce((sum, b) => sum + Number(b.amount), 0)
-  const totalSpent = budgets.reduce((sum, b) => sum + Number(b.spent_amount || 0), 0)
+  const filteredBudgets = categoryFilter
+    ? budgets.filter(b => b.category_name === categoryFilter)
+    : budgets
+
+  const totalBudgeted = filteredBudgets.reduce((sum, b) => sum + Number(b.amount), 0)
+  const totalSpent = filteredBudgets.reduce((sum, b) => sum + Number(b.spent_amount || 0), 0)
   const overallPct = totalBudgeted > 0 ? Math.min(Math.round((totalSpent / totalBudgeted) * 100), 100) : 0
 
   let summaryBarColor = 'bg-emerald-500'
   if (overallPct >= 100) summaryBarColor = 'bg-[#ee6c4d]'
   else if (overallPct > 80) summaryBarColor = 'bg-amber-500'
 
-  const needsAttention = budgets.filter(b => {
+  // split budgets into two groups for the UI: those at 80%+ and those below
+  const needsAttention = filteredBudgets.filter(b => {
     const ratio = Number(b.amount) > 0 ? Number(b.spent_amount || 0) / Number(b.amount) : 0
     return ratio >= 0.8
   })
-  const onTrack = budgets.filter(b => {
+  const onTrack = filteredBudgets.filter(b => {
     const ratio = Number(b.amount) > 0 ? Number(b.spent_amount || 0) / Number(b.amount) : 0
     return ratio < 0.8
   })
 
   return (
     <div className="space-y-8 page-enter">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 text-xs">Dismiss</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -129,13 +152,42 @@ function Budgets() {
         </div>
       )}
 
+      {budgets.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(prev => prev === cat ? '' : cat)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                categoryFilter === cat
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+          {categoryFilter && (
+            <button
+              onClick={() => setCategoryFilter('')}
+              className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {showForm && <BudgetForm onCreated={handleCreated} onCancel={() => setShowForm(false)} />}
 
-      {budgets.length === 0 ? (
+      {filteredBudgets.length === 0 ? (
         <EmptyState
-          title="No Budgets"
-          message="Create a budget to start tracking your spending by category."
-          action={{ label: 'New Budget', onClick: () => setShowForm(true) }}
+          title={categoryFilter ? 'No Matching Budgets' : 'No Budgets'}
+          message={categoryFilter ? `No budgets found for ${categoryFilter}.` : 'Create a budget to start tracking your spending by category.'}
+          action={categoryFilter
+            ? { label: 'Clear Filter', onClick: () => setCategoryFilter('') }
+            : { label: 'New Budget', onClick: () => setShowForm(true) }
+          }
         />
       ) : (
         <>

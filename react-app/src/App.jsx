@@ -10,7 +10,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8 pb-20 md:pb-8">
+      <main className="max-w-7xl mx-auto px-4 pt-24 pb-20 md:pb-8">
         {/* login is public, everything else is protected */}
         <Routes>
           <Route path="/login" element={<Login />} />
