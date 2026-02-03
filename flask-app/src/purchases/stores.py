@@ -5,10 +5,9 @@ from src.helpers import build_json_response, success_response, error_response, v
 
 from . import purchases
 
-# store endpoints
-
 @purchases.route('/stores', methods=['GET'])
 def get_stores():
+    """Return every store in the database."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Stores')
@@ -38,13 +37,24 @@ def search_stores():
 
 @purchases.route('/stores', methods=['POST'])
 def create_store():
+    """Register a new store with its address info."""
     try:
-        the_data, err = validate_fields(['store_name', 'zip_code', 'street_address', 'city', 'state'])
+        the_data, err = validate_fields(
+            ['store_name', 'zip_code', 'street_address', 'city', 'state']
+        )
         if err:
             return err
 
-        query = 'INSERT INTO Stores (store_name, zip_code, street_address, city, state) VALUES (%s, %s, %s, %s, %s)'
-        values = (the_data['store_name'], the_data['zip_code'], the_data['street_address'], the_data['city'], the_data['state'])
+        query = (
+            'INSERT INTO Stores '
+            '(store_name, zip_code, street_address, city, state) '
+            'VALUES (%s, %s, %s, %s, %s)'
+        )
+        values = (
+            the_data['store_name'], the_data['zip_code'],
+            the_data['street_address'], the_data['city'],
+            the_data['state']
+        )
         cursor = db.get_db().cursor()
         cursor.execute(query, values)
         db.get_db().commit()
@@ -55,6 +65,7 @@ def create_store():
 
 @purchases.route('/stores/<store_id>', methods=['GET'])
 def get_store(store_id):
+    """Fetch a single store by ID, 404 if not found."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Stores WHERE store_id = %s', (store_id,))
@@ -70,12 +81,19 @@ def get_store(store_id):
 
 @purchases.route('/stores/<store_id>', methods=['PUT'])
 def update_store(store_id):
+    """Overwrite a store's name and address fields."""
     try:
-        the_data, err = validate_fields(['store_name', 'zip_code', 'street_address', 'city', 'state'])
+        the_data, err = validate_fields(
+            ['store_name', 'zip_code', 'street_address', 'city', 'state']
+        )
         if err:
             return err
 
-        query = 'UPDATE Stores SET store_name = %s, zip_code = %s, street_address = %s, city = %s, state = %s WHERE store_id = %s'
+        query = (
+            'UPDATE Stores SET store_name = %s, zip_code = %s, '
+            'street_address = %s, city = %s, state = %s '
+            'WHERE store_id = %s'
+        )
         values = (
             the_data['store_name'],
             the_data['zip_code'],
@@ -94,6 +112,7 @@ def update_store(store_id):
 
 @purchases.route('/stores/<store_id>', methods=['DELETE'])
 def delete_store(store_id):
+    """Delete a store record."""
     try:
         query = 'DELETE FROM Stores WHERE store_id = %s'
         cursor = db.get_db().cursor()

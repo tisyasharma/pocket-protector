@@ -1,10 +1,11 @@
 # Pocket Protectors
 
-Personal finance tracker built with React, Flask, and MySQL. Track receipts, set budgets, monitor spending goals, and log investments.
+Personal finance tracker built with React, Flask, and MySQL. Track receipts, set budgets, and monitor spending goals.
 
 **Live demo:** [links here later]
 
-Log in with any of the test accounts to explore:
+
+Log in with any of the seeded demo accounts to explore. These are pre-loaded test users with fake data, not real credentials:
 
 | Email | Password | Persona |
 |-------|----------|---------|
@@ -12,9 +13,9 @@ Log in with any of the test accounts to explore:
 | `david@example.edu` | `david_password` | College student |
 | `maria@example.com` | `maria_password` | Somerville parent |
 | `john@example.com` | `john_password` | Brookline retiree |
-| `user1@example.com` | `password123` | Cambridge freelancer |
+| `alex@example.com` | `alex_password` | Cambridge freelancer |
 
-Each user has two years of Boston-area spending data with distinct habits, budgets, and goals.
+Each demo user has two years of seeded spending data with their own distinct habits, budgets, and goals.
 
 ## Architecture
 
@@ -25,7 +26,7 @@ Browser  -->  React (Nginx)  -->  Flask API  -->  MySQL
 The React frontend talks to the Flask API over HTTP. The API runs parameterized queries against MySQL and is organized into four blueprint groups:
 
 - **`/users`** -- accounts and groups, login
-- **`/purchases`** -- receipts, transactions, stores, investments
+- **`/purchases`** -- receipts, transactions, stores
 - **`/management`** -- budgets, spending goals, notifications
 - **`/descriptors`** -- categories and tags
 
@@ -56,7 +57,7 @@ flask-app/
     __init__.py               # app factory, DB config
     helpers.py                # shared response/validation utilities
     users/users.py            # user + group routes, login
-    purchases/receipts.py     # receipts, transactions, stores, investments
+    purchases/receipts.py     # receipts, transactions, stores
     management/management.py  # budgets, spending goals, notifications
     descriptors/categories.py # categories, tags
     ml/categorizer.py         # ML category prediction

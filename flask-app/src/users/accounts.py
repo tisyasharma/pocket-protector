@@ -3,10 +3,9 @@ from src import db
 from src.helpers import build_json_response, success_response, error_response, validate_fields
 from src.users.users import users
 
-# user account endpoints
-
 @users.route('', methods=['GET'])
 def get_users():
+    """List all users, excluding password hashes from the response."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT user_id, group_id, email, first_name, middle_name, last_name FROM Users')
@@ -18,13 +17,20 @@ def get_users():
 
 @users.route('', methods=['POST'])
 def create_user():
+    """Register a new user, hashing the password before storage."""
     try:
-        the_data, err = validate_fields(['email', 'first_name', 'last_name', 'password'])
+        the_data, err = validate_fields(
+            ['email', 'first_name', 'last_name', 'password']
+        )
         if err:
             return err
 
         hashed_pw = generate_password_hash(the_data['password'])
-        query = 'INSERT INTO Users (group_id, email, first_name, middle_name, last_name, password) VALUES (%s, %s, %s, %s, %s, %s)'
+        query = (
+            'INSERT INTO Users '
+            '(group_id, email, first_name, middle_name, last_name, password) '
+            'VALUES (%s, %s, %s, %s, %s, %s)'
+        )
         values = (
             the_data.get('group_id'),
             the_data['email'],
@@ -43,13 +49,20 @@ def create_user():
 
 @users.route('/<user_id>', methods=['PUT'])
 def update_user(user_id):
+    """Update a user's profile and re-hash the password."""
     try:
-        the_data, err = validate_fields(['group_id', 'email', 'first_name', 'last_name', 'password'])
+        the_data, err = validate_fields(
+            ['group_id', 'email', 'first_name', 'last_name', 'password']
+        )
         if err:
             return err
 
         hashed_pw = generate_password_hash(the_data['password'])
-        query = 'UPDATE Users SET group_id=%s, email=%s, first_name=%s, middle_name=%s, last_name=%s, password=%s WHERE user_id=%s'
+        query = (
+            'UPDATE Users SET group_id=%s, email=%s, first_name=%s, '
+            'middle_name=%s, last_name=%s, password=%s '
+            'WHERE user_id=%s'
+        )
         values = (
             the_data['group_id'],
             the_data['email'],
@@ -69,6 +82,7 @@ def update_user(user_id):
 
 @users.route('/<user_id>', methods=['GET'])
 def get_user(user_id):
+    """Fetch a single user by ID, 404 if not found."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute(
@@ -87,6 +101,7 @@ def get_user(user_id):
 
 @users.route('/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
+    """Permanently remove a user account."""
     try:
         query = 'DELETE FROM Users WHERE user_id = %s'
         cursor = db.get_db().cursor()

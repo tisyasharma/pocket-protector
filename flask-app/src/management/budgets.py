@@ -2,10 +2,9 @@ from src import db
 from src.helpers import build_json_response, success_response, error_response, validate_fields
 from src.management.management import management
 
-# budget endpoints
-
 @management.route('/budgets/<category_id>', methods=['GET'])
 def get_budget_of_category(category_id):
+    """Fetch all budgets tied to a specific category."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Budgets WHERE category_id = %s', (category_id,))
@@ -17,13 +16,23 @@ def get_budget_of_category(category_id):
 
 @management.route('/budgets/<category_id>', methods=['POST'])
 def create_budget(category_id):
+    """Create a new budget for a category with a date range."""
     try:
-        the_data, err = validate_fields(['amount', 'start_date', 'end_date', 'user_id'])
+        the_data, err = validate_fields(
+            ['amount', 'start_date', 'end_date', 'user_id']
+        )
         if err:
             return err
 
-        query = 'INSERT INTO Budgets (amount, start_date, end_date, category_id, user_id) VALUES (%s, %s, %s, %s, %s)'
-        values = (the_data['amount'], the_data['start_date'], the_data['end_date'], category_id, the_data['user_id'])
+        query = (
+            'INSERT INTO Budgets '
+            '(amount, start_date, end_date, category_id, user_id) '
+            'VALUES (%s, %s, %s, %s, %s)'
+        )
+        values = (
+            the_data['amount'], the_data['start_date'],
+            the_data['end_date'], category_id, the_data['user_id']
+        )
         cursor = db.get_db().cursor()
         cursor.execute(query, values)
         db.get_db().commit()
@@ -34,13 +43,24 @@ def create_budget(category_id):
 
 @management.route('/budgets/<budget_id>', methods=['PUT'])
 def update_budget(budget_id):
+    """Update a budget's amount, dates, or notification threshold."""
     try:
-        the_data, err = validate_fields(['amount', 'start_date', 'end_date', 'notification_threshold'])
+        the_data, err = validate_fields(
+            ['amount', 'start_date', 'end_date', 'notification_threshold']
+        )
         if err:
             return err
 
-        query = 'UPDATE Budgets SET amount = %s, start_date = %s, end_date = %s, notification_threshold = %s WHERE budget_id = %s'
-        values = (the_data['amount'], the_data['start_date'], the_data['end_date'], the_data['notification_threshold'], budget_id)
+        query = (
+            'UPDATE Budgets SET amount = %s, start_date = %s, '
+            'end_date = %s, notification_threshold = %s '
+            'WHERE budget_id = %s'
+        )
+        values = (
+            the_data['amount'], the_data['start_date'],
+            the_data['end_date'], the_data['notification_threshold'],
+            budget_id
+        )
         cursor = db.get_db().cursor()
         cursor.execute(query, values)
         db.get_db().commit()
@@ -51,6 +71,7 @@ def update_budget(budget_id):
 
 @management.route('/budgets/<budget_id>', methods=['DELETE'])
 def delete_budget(budget_id):
+    """Remove a budget by ID."""
     try:
         query = 'DELETE FROM Budgets WHERE budget_id = %s'
         cursor = db.get_db().cursor()

@@ -4,10 +4,9 @@ from src.helpers import build_json_response, success_response, error_response, v
 
 descriptors = Blueprint('descriptors', __name__)
 
-# category endpoints
-
 @descriptors.route('/categories', methods=['GET'])
 def get_all_categories():
+    """Fetch every category from the lookup table."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Categories')
@@ -19,6 +18,7 @@ def get_all_categories():
 
 @descriptors.route('/categories/<category_id>', methods=['GET'])
 def get_category(category_id):
+    """Fetch a single category by its primary key."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Categories WHERE category_id = %s', (category_id,))
@@ -30,10 +30,9 @@ def get_category(category_id):
         return error_response(str(e), 500)
 
 
-# tag endpoints
-
 @descriptors.route('/tags/<user_id>', methods=['GET'])
 def get_all_tags(user_id):
+    """Return all custom tags belonging to a user."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Tags WHERE user_id = %s', (user_id,))
@@ -45,6 +44,7 @@ def get_all_tags(user_id):
 
 @descriptors.route('/tags/<user_id>', methods=['POST'])
 def create_tag(user_id):
+    """Create a new tag for the given user."""
     try:
         the_data, err = validate_fields(['tag_name'])
         if err:
@@ -62,6 +62,7 @@ def create_tag(user_id):
 
 @descriptors.route('/tags/<tag_id>', methods=['PUT'])
 def update_tag(tag_id):
+    """Rename an existing tag."""
     try:
         the_data, err = validate_fields(['tag_name'])
         if err:
@@ -79,6 +80,7 @@ def update_tag(tag_id):
 
 @descriptors.route('/tags/<tag_id>', methods=['DELETE'])
 def delete_tag(tag_id):
+    """Remove a tag by its ID."""
     try:
         query = 'DELETE FROM Tags WHERE tag_id = %s'
         cursor = db.get_db().cursor()

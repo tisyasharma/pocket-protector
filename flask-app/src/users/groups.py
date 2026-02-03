@@ -2,10 +2,9 @@ from src import db
 from src.helpers import build_json_response, success_response, error_response, validate_fields
 from src.users.users import users
 
-# group endpoints
-
 @users.route('/group-members/<group_id>', methods=['GET'])
 def get_users_from_group(group_id):
+    """List every user that belongs to a shared spending group."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute(
@@ -20,6 +19,7 @@ def get_users_from_group(group_id):
 
 @users.route('/group/<group_id>', methods=['PUT'])
 def update_group(group_id):
+    """Rename a group or change its admin."""
     try:
         the_data, err = validate_fields(['group_name', 'admin_user_id'])
         if err:
@@ -37,6 +37,7 @@ def update_group(group_id):
 
 @users.route('/group/<admin_user_id>', methods=['POST'])
 def create_group(admin_user_id):
+    """Create a new spending group with the given user as admin."""
     try:
         the_data, err = validate_fields(['group_name'])
         if err:

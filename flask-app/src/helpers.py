@@ -2,11 +2,13 @@ from flask import jsonify, make_response, request
 
 
 def build_json_response(cursor, rows):
+    """Convert raw DB tuples into a list of dicts keyed by column name."""
     row_headers = [x[0] for x in cursor.description]
     return [dict(zip(row_headers, row)) for row in rows]
 
 
 def success_response(data, status_code=200):
+    """Wrap data in a JSON response with the given status code."""
     response = make_response(jsonify(data))
     response.status_code = status_code
     response.mimetype = 'application/json'
@@ -14,6 +16,7 @@ def success_response(data, status_code=200):
 
 
 def error_response(message, status_code=400):
+    """Return a JSON error envelope, defaults to 400 Bad Request."""
     response = make_response(jsonify({'error': message}))
     response.status_code = status_code
     response.mimetype = 'application/json'

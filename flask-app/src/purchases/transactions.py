@@ -3,10 +3,9 @@ from src.helpers import build_json_response, success_response, error_response, v
 
 from . import purchases
 
-# transaction endpoints
-
 @purchases.route('/transactions/<receipt_id>', methods=['GET'])
 def get_transactions(receipt_id):
+    """Return all line-item transactions for a given receipt."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Transactions WHERE receipt_id = %s', (receipt_id,))
@@ -18,6 +17,7 @@ def get_transactions(receipt_id):
 
 @purchases.route('/transactions/<receipt_id>', methods=['POST'])
 def create_transaction(receipt_id):
+    """Add a line item to an existing receipt."""
     try:
         the_data, err = validate_fields(['unit_cost', 'quantity', 'item_name'])
         if err:
@@ -35,6 +35,7 @@ def create_transaction(receipt_id):
 
 @purchases.route('/transactions/detail/<transaction_id>', methods=['GET'])
 def get_transaction(transaction_id):
+    """Fetch a single transaction by ID."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Transactions WHERE transaction_id = %s', (transaction_id,))
@@ -50,6 +51,7 @@ def get_transaction(transaction_id):
 
 @purchases.route('/transactions/<transaction_id>', methods=['DELETE'])
 def delete_transaction(transaction_id):
+    """Remove a transaction from a receipt."""
     try:
         query = 'DELETE FROM Transactions WHERE transaction_id = %s'
         cursor = db.get_db().cursor()

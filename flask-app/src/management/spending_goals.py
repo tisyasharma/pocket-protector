@@ -2,10 +2,12 @@ from src import db
 from src.helpers import build_json_response, success_response, error_response, validate_fields
 from src.management.management import management
 
-# spending goal endpoints
-
 @management.route('/spending-goals/<user_id>', methods=['GET'])
 def get_spending_goals(user_id):
+    """
+    Return all spending goals for a user, with actual spending filled in.
+    Joins against Receipts grouped by month to calculate current_amount.
+    """
     try:
         cursor = db.get_db().cursor()
         cursor.execute('''
@@ -27,6 +29,7 @@ def get_spending_goals(user_id):
 
 @management.route('/spending-goals/<user_id>', methods=['POST'])
 def create_spending_goal(user_id):
+    """Create a new monthly spending goal for this user."""
     try:
         the_data, err = validate_fields(['current_amount', 'target_amount', 'month'])
         if err:
@@ -44,6 +47,7 @@ def create_spending_goal(user_id):
 
 @management.route('/spending-goals/goal/<goal_id>', methods=['GET'])
 def get_spending_goal(goal_id):
+    """Fetch a single spending goal by its primary key."""
     try:
         cursor = db.get_db().cursor()
         cursor.execute('SELECT * FROM Spending_goals WHERE goal_id = %s', (goal_id,))
@@ -59,6 +63,7 @@ def get_spending_goal(goal_id):
 
 @management.route('/spending-goals/<goal_id>', methods=['PUT'])
 def update_spending_goal(goal_id):
+    """Update the target amount or month for a goal."""
     try:
         the_data, err = validate_fields(['current_amount', 'target_amount', 'month'])
         if err:
@@ -76,6 +81,7 @@ def update_spending_goal(goal_id):
 
 @management.route('/spending-goals/<goal_id>', methods=['DELETE'])
 def delete_spending_goal(goal_id):
+    """Remove a spending goal."""
     try:
         query = 'DELETE FROM Spending_goals WHERE goal_id = %s'
         cursor = db.get_db().cursor()
