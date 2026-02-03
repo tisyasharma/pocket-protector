@@ -15,8 +15,13 @@ def get_spending_goals(user_id):
                    COALESCE(r.total, 0) as current_amount
             FROM Spending_goals sg
             LEFT JOIN (
-                SELECT user_id, MONTHNAME(date) as month_name, SUM(total_amount) as total
+                SELECT user_id,
+                       MONTHNAME(date) as month_name,
+                       SUM(total_amount) as total
                 FROM Receipts
+                WHERE YEAR(date) = (
+                    SELECT MAX(YEAR(date)) FROM Receipts
+                )
                 GROUP BY user_id, MONTHNAME(date)
             ) r ON r.user_id = sg.user_id AND r.month_name = sg.Month
             WHERE sg.user_id = %s
