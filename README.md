@@ -5,7 +5,7 @@ Personal finance tracker built with React, Flask, and MySQL. Track receipts, set
 **Live demo:** [pocketprotectors.up.railway.app](https://pocketprotectors.up.railway.app/)
 ![Dashboard](image.png)
 ![Budgeting page](image-2.png)
-![Login](image-3.png)
+![Login](image-4.png)
 
 Log in with any of the seeded demo accounts to explore. These are pre-loaded test users with fake data, not real credentials:
 
