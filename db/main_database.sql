@@ -146,11 +146,11 @@ VALUES
 -- Demo users with hashed passwords
 INSERT INTO Users (group_id, email, first_name, middle_name, last_name, password)
 VALUES
-(1, 'sophia@example.com', 'Sophia', NULL, 'Rodriguez', 'scrypt:32768:8:1$PxPoUSYUBDPLxDk2$56e9fa53c55ad07c5d03f0f75d7d952809545cf73cbb7198dad4908e5e3421c91017f4b0c51e90c493f0dd505bfceb32b24cdd75653fab3f7125bd1cdc5085db'),
-(2, 'david@example.edu', 'David', NULL, 'Kim', 'scrypt:32768:8:1$bD7POKqpqI407GjV$89b23c4254e765602a75ab4edd0b513e70e954fada527aa40121c40ab66a1b39b955bc0b972c25a30b923cf0c942edc992534798419a1793f9124386f2bfa9ac'),
-(3, 'maria@example.com', 'Maria', NULL, 'Santos', 'scrypt:32768:8:1$ZCOsFwJ3g5wN01HF$86c8487b073769db10d741c4ded857f86f4d12fa448c2f2901409fe4b87bfd422c199b232107371da1126032b2ed22a155d2d634cdbce2199a2cd761c1d6c3d6'),
-(4, 'john@example.com', 'John', NULL, 'Chen', 'scrypt:32768:8:1$d99gQUiQ81DfgFsD$2e7c6e86a8e60c1e822e1f3459214ed53d92dcb70c16963fffa26008bbeb6437e992d68bae6f7bae56c9799021b8453553111d001399dff92e1ab0a3bd71abdd'),
-(5, 'alex@example.com', 'Alex', NULL, 'Thompson', 'scrypt:32768:8:1$QjtLRiaF3uuTpGhg$78c581fa51e85607c947875361e2b4f463983cdbd75306be6ccb279952d3087ba415c6bfaf9383902e891bfafd1137b52a3fbe1591b089c537f7eb13a71cfee6');
+(1, 'sophia@example.com', 'Sophia', NULL, NULL, 'scrypt:32768:8:1$PxPoUSYUBDPLxDk2$56e9fa53c55ad07c5d03f0f75d7d952809545cf73cbb7198dad4908e5e3421c91017f4b0c51e90c493f0dd505bfceb32b24cdd75653fab3f7125bd1cdc5085db'),
+(2, 'david@example.edu', 'David', NULL, NULL, 'scrypt:32768:8:1$bD7POKqpqI407GjV$89b23c4254e765602a75ab4edd0b513e70e954fada527aa40121c40ab66a1b39b955bc0b972c25a30b923cf0c942edc992534798419a1793f9124386f2bfa9ac'),
+(3, 'maria@example.com', 'Maria', NULL, NULL, 'scrypt:32768:8:1$ZCOsFwJ3g5wN01HF$86c8487b073769db10d741c4ded857f86f4d12fa448c2f2901409fe4b87bfd422c199b232107371da1126032b2ed22a155d2d634cdbce2199a2cd761c1d6c3d6'),
+(4, 'john@example.com', 'John', NULL, NULL, 'scrypt:32768:8:1$d99gQUiQ81DfgFsD$2e7c6e86a8e60c1e822e1f3459214ed53d92dcb70c16963fffa26008bbeb6437e992d68bae6f7bae56c9799021b8453553111d001399dff92e1ab0a3bd71abdd'),
+(5, 'alex@example.com', 'Alex', NULL, NULL, 'scrypt:32768:8:1$QjtLRiaF3uuTpGhg$78c581fa51e85607c947875361e2b4f463983cdbd75306be6ccb279952d3087ba415c6bfaf9383902e891bfafd1137b52a3fbe1591b089c537f7eb13a71cfee6');
 
 
 -- Boston-area stores (groceries, restaurants, cafes, shops, gyms, pharmacies)
