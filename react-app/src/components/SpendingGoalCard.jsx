@@ -29,7 +29,9 @@ function SpendingGoalCard({ goal, onDelete, onEdit }) {
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-[10px] uppercase tracking-wider text-brand-400">Monthly Target</p>
-          <p className="font-semibold text-gray-900">{goal.Month}</p>
+          <p className="font-semibold text-gray-900">
+            {goal.Month}{goal.data_year ? ` ${goal.data_year}` : ''}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-sm font-medium ${statusColor}`}>{percentage}%</span>

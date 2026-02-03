@@ -12,7 +12,8 @@ def get_spending_goals(user_id):
         cursor = db.get_db().cursor()
         cursor.execute('''
             SELECT sg.goal_id, sg.target_amount, sg.Month, sg.user_id,
-                   COALESCE(r.total, 0) as current_amount
+                   COALESCE(r.total, 0) as current_amount,
+                   (SELECT MAX(YEAR(date)) FROM Receipts) as data_year
             FROM Spending_goals sg
             LEFT JOIN (
                 SELECT user_id,
