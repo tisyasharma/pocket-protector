@@ -39,9 +39,7 @@ function Navbar() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600 hidden sm:inline">
-                {user.first_name} {user.last_name}
-              </span>
+              <span className="text-sm text-gray-600 hidden sm:inline">{user.first_name}</span>
               <button
                 onClick={logout}
                 className="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-md transition-colors"

@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS Users (
     email VARCHAR(255) NOT NULL,
     first_name VARCHAR(50) NOT NULL,
     middle_name VARCHAR(50),
-    last_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50),
     password VARCHAR(255) NOT NULL,
     FOREIGN KEY (group_id) REFERENCES `Groups`(group_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
