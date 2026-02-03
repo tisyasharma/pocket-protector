@@ -52,44 +52,6 @@ docker compose up --build
 
 App runs at http://localhost:3000, API at http://localhost:8001.
 
-## Project Structure
-
-```
-flask-app/
-  app.py                          # entry point
-  src/
-    __init__.py                   # app factory, DB config
-    helpers.py                    # shared response/validation utilities
-    users/
-      accounts.py                 # account CRUD, login
-      auth.py                     # auth middleware
-      groups.py                   # group management
-    purchases/
-      receipts.py                 # receipt CRUD, summaries, ML retrain
-      transactions.py             # transaction queries
-      stores.py                   # store CRUD, subscription tracking
-    management/
-      budgets.py                  # per-category budget limits
-      spending_goals.py           # monthly spending goals
-      notifications.py            # alert preferences
-    descriptors/
-      categories.py               # categories and tags
-    ml/
-      categorizer.py              # TF-IDF + Logistic Regression categorizer
-  tests/                          # pytest suite with mocked DB
-
-react-app/
-  src/
-    pages/                        # Login, Dashboard, Receipts, Budgets
-    components/                   # cards, forms, charts, alerts
-    context/AuthContext.jsx       # auth state, login/logout
-    api/client.js                 # axios HTTP client
-    utils/constants.js            # shared category list, date helpers
-
-db/
-  main_database.sql               # schema + seed data
-```
-
 ## Team
 
 Tisya Sharma, Donny Le, Trayna Bui, Jasmine McCoy
