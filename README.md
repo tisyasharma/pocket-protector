@@ -14,7 +14,7 @@ Log in with any of the seeded demo accounts to explore. These are pre-loaded tes
 
 Each demo user has two years of seeded spending data with their own distinct habits, budgets, and goals.
 
-**Live demo:** [pocketprotectors.up.railway.app](https://pocketprotectors.up.railway.app/)
+**Live demo:** [pocket-protector.vercel.app](https://pocket-protector.vercel.app/)
 ![Dashboard](docs/dashboard.png)
 ![Spending Breakdown](docs/spending-breakdown.png)
 ![Budgeting page](docs/budgets.png)
@@ -24,7 +24,7 @@ Each demo user has two years of seeded spending data with their own distinct hab
 ## Architecture
 
 ```
-Browser  -->  React (Nginx)  -->  Flask API  -->  MySQL
+Browser  -->  React (Vercel)  -->  Flask API (Koyeb)  -->  TiDB Cloud
 ```
 
 The React frontend talks to the Flask API over HTTP. The API runs parameterized queries against MySQL and is organized into four blueprint groups:
