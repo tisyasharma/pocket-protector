@@ -1,7 +1,46 @@
 import os
-from flask import Flask
-from flaskext.mysql import MySQL
+import ssl
+
+import pymysql
+from flask import Flask, g
 from flask_cors import CORS
+
+
+class MySQL:
+    """Lightweight pymysql wrapper that mirrors the flask-mysql get_db() interface."""
+
+    def __init__(self):
+        self._app = None
+
+    def init_app(self, app):
+        self._app = app
+        app.teardown_appcontext(self._teardown)
+
+    def _connect(self):
+        kwargs = {
+            'host': self._app.config['DB_HOST'],
+            'port': self._app.config['DB_PORT'],
+            'user': self._app.config['DB_USER'],
+            'password': self._app.config['DB_PASSWORD'],
+            'database': self._app.config['DB_NAME'],
+        }
+
+        if self._app.config.get('DB_SSL'):
+            ctx = ssl.create_default_context()
+            kwargs['ssl'] = ctx
+
+        return pymysql.connect(**kwargs)
+
+    def get_db(self):
+        if 'db_conn' not in g:
+            g.db_conn = self._connect()
+        return g.db_conn
+
+    def _teardown(self, _exc):
+        conn = g.pop('db_conn', None)
+        if conn is not None:
+            conn.close()
+
 
 db = MySQL()
 
@@ -10,21 +49,20 @@ def create_app():
     app = Flask(__name__)
 
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-    app.config['MYSQL_DATABASE_USER'] = os.environ.get('MYSQLUSER', os.environ.get('DB_USER', 'root'))
-    app.config['MYSQL_DATABASE_HOST'] = os.environ.get('MYSQLHOST', os.environ.get('DB_HOST', 'db'))
-    app.config['MYSQL_DATABASE_PORT'] = int(os.environ.get('MYSQLPORT', os.environ.get('DB_PORT', 3306)))
-    app.config['MYSQL_DATABASE_DB'] = os.environ.get('MYSQLDATABASE', os.environ.get('DB_NAME', 'FinanceAppDatabase'))
+    app.config['DB_HOST'] = os.environ.get('DB_HOST', 'db')
+    app.config['DB_PORT'] = int(os.environ.get('DB_PORT', 3306))
+    app.config['DB_USER'] = os.environ.get('DB_USER', 'root')
+    app.config['DB_NAME'] = os.environ.get('DB_NAME', 'FinanceAppDatabase')
+    app.config['DB_SSL'] = os.environ.get('DB_SSL', '').lower() == 'true'
 
-    railway_pw = os.environ.get('MYSQLPASSWORD')
-    if railway_pw:
-        app.config['MYSQL_DATABASE_PASSWORD'] = railway_pw
+    pw_file = os.environ.get('DB_PASSWORD_FILE', '/secrets/db_root_password.txt')
+    if os.environ.get('DB_PASSWORD'):
+        app.config['DB_PASSWORD'] = os.environ['DB_PASSWORD']
+    elif os.path.exists(pw_file):
+        with open(pw_file) as f:
+            app.config['DB_PASSWORD'] = f.readline().strip()
     else:
-        pw_file = os.environ.get('DB_PASSWORD_FILE', '/secrets/db_root_password.txt')
-        if os.path.exists(pw_file):
-            with open(pw_file) as f:
-                app.config['MYSQL_DATABASE_PASSWORD'] = f.readline().strip()
-        else:
-            app.config['MYSQL_DATABASE_PASSWORD'] = os.environ.get('DB_PASSWORD', '')
+        app.config['DB_PASSWORD'] = ''
 
     db.init_app(app)
     CORS(app)
